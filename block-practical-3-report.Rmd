@@ -6,25 +6,92 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+## load the libraries
+library(tidyverse)
+library(haven)
+library(skimr)
+
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Helpful Links
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+- [Learning statistics with R: A tutorial for psychology students and other beginners](https://learningstatisticswithr.com/book/)
+- [R for Data Science](https://r4ds.had.co.nz/)
+- [jamovi](https://www.jamovi.org/)
+- [psyTeachR Teaching Reproducible Research](https://psyteachr.github.io/)
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+# Read Data
 
-```{r cars}
-summary(cars)
+```{r, include=F}
+raw_data <- read_csv("raw-data/Block_Practical_2019_raw.csv") %>% 
+  rename_all(tolower) 
+
+# SELECT VARIABLES FOR FURTHER ANALYSIS ----
+data <- raw_data %>% 
+  # Create id variable
+  mutate(id = 1:nrow(raw_data)) %>% 
+  # Select variables
+  select("id", 
+         "age", "gender","education", "field_study", "ethnicity", "religion",
+         "gad_1", "gad_2", "gad_3", "gad_4", "gad_5", "gad_6", "gad_7",
+         "crs_1", "crs_2", "crs_3", "crs_4", "crs_5", "crs_6", "crs_7", "crs_8",
+         "crs_cont_1", "crs_cont_2", "crs_cont_3", "crs_cont_4", "crs_cont_5", "crs_cont_6", "crs_cont_7", "crs_cont_8")
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+# Recode Variables
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+# RECODE ALL GAD VARIABLES AT THE SAME TIME ----
+data_rec <- data %>% 
+  mutate_at(
+    c("gad_1", "gad_2", "gad_3", "gad_4", "gad_5", "gad_6", "gad_7"),
+    funs(case_when(
+      . == 1 ~ 0,
+      . == 2 ~ 1,
+      . == 3 ~ 2,
+      . == 4 ~ 3))) 
+
+# COMPUTE SUM SCORE for GAD and CRS ----
+data_rec <- data_rec %>% 
+  mutate(gad_sum = rowSums(data_rec[, c("gad_1", "gad_2", "gad_3", "gad_4", "gad_5", "gad_6", "gad_7")], na.rm = T),
+         crs_sum = rowSums(data_rec[, c("crs_1", "crs_2", "crs_3", "crs_4", "crs_5", "crs_6", "crs_7", "crs_8")], na.rm = T))
+
+# EXERCISE, CALCULATE SUMS FOR 'crs_cont'
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# Plot Data 
+
+```{r}
+## EXERCISE EXPLORE THE DISTRIBUTION ----
+
+ggplot(data_rec, aes(gad_sum)) +
+  geom_histogram()
+
+ggplot(data_rec, aes(crs_sum)) +
+  geom_histogram()
+
+# data_rec <- data_rec %>% 
+#   mutate(age = ifelse(age > 150, NA, age))
+
+## SCATTERPLOTS ----
+ggplot(data = data_rec, aes(x = gad_sum, y = crs_sum, color = factor(gender))) + 
+  geom_point()
+```
+
+
+# Save Data 
+
+```{r}
+
+# CSV FILE ----
+write_csv(data_rec, path = "data/block-practical-data-2019.csv")
+
+# SPSS FILE ----
+write_sav(data_rec, path = "data/block-practical-data-2019.sav")
+
+```
+
